@@ -1,0 +1,9 @@
+{
+  "base_dao":"org.swiftdao.KeyedCrudDao",
+  "base_dao_name":"KeyedCrudDao",
+  "base_dao_impl":"org.swiftdao.impl.HibernateKeyedCrudDaoImpl",
+  "base_dao_impl_name":"HibernateKeyedCrudDaoImpl",
+  "base_entity":"BaseBranEntity",
+  "entity_pkg_name":"com.example.entity",
+  "dao_pkg_name":"com.example.dao"
+}
