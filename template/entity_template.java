@@ -29,7 +29,7 @@ public class <%-entity_name-%> extends <%-base_entity-%> {
 	 <% for (var j=0; j<col_defs[i].annotations.length; j++) { %>
 	<%-col_defs[i].annotations[j]-%>
 	 <% } %>
-	<%-col_defs[i].type-%> <%-col_defs[i].property_name-%>;
+	private <%-col_defs[i].type-%> <%-col_defs[i].property_name-%>;
 <% } %>
 
 <% //类属性方法 %>
