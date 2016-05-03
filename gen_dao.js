@@ -273,7 +273,7 @@ function genJpaDaoInterfaceAndImpl(entityName, entityDesc) {
   console.log('==== Create JPA Dao Interface for Entity "%s" ====', entityName);
   // var daoImplName = replaceTail(entityName, 'Entity', 'DaoImpl');
 
-  var templateSrc = readFileToString('template/dao_template.java');
+  var templateSrc = readFileToString('template/dao_impl_template.java');
 
   var template = ejs.compile(templateSrc, {compileDebug: true, rmWhitespace: false});
   javaCode = template(params);
