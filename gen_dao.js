@@ -1,7 +1,6 @@
-// Usage: node gen_java_node.js <source folder name> <target folder name> <entity package name> <dao package name>
+// Usage: node gen_java_node.js <source folder name> <target folder name>
 // <source folder name>: Include files each for a table.
 // <target folder name>: To store generated java class files.
-// <package name>: Pakcage name for java class
 // 映射文件格式：
 // 1# DB表名
 // 2# 第一个字段名 + 空格 +  如果后面跟一个 # 号表示字段非空，跟一个 * 号表示字段唯一
@@ -20,19 +19,15 @@ var decoder = new StringDecoder('utf8');
 var LINE_SEP = '\n';
 
 if (process.argv.length < 4) {
-  console.log('Usage: node gen_dao.js <source folder name> <target folder name> <entity package name> <dao package name>');
+  console.log('Usage: node gen_dao.js <source folder name> <target folder name>');
   return;
 }
 
 var arg_src_folder = process.argv[2];
 var arg_target_folder = process.argv[3];
-// var arg_pkg_name_entity = process.argv[4];
-// var arg_pkg_name_dao = process.argv[5];
 
 console.log(arg_src_folder);
 console.log(arg_target_folder);
-// console.log(arg_pkg_name_entity);
-// console.log(arg_pkg_name_dao);
 
 var mappingSrc = readFileToString('template/mapping');
 var mapping = JSON.parse(mappingSrc);
@@ -132,6 +127,7 @@ function getLength(str, type) {
  * @param className 实体类名
  * @param tbName 表名
  * @param columns 字段定义
+ * @param entityDesc
  */
 function genJpaEntity(className, tbName, columns, entityDesc) {
   console.log();
@@ -207,7 +203,7 @@ function genJpaEntity(className, tbName, columns, entityDesc) {
 
   console.log('转换结果:');
   console.log(colValues);
-  for(var i=0;i<colValues.length;i++) {
+  for(var i=0; i<colValues.length; i++) {
     console.log(colValues[i]);
   }
 
@@ -230,7 +226,7 @@ function genJpaEntity(className, tbName, columns, entityDesc) {
 }
 
 /**
- *
+ * 读取文本文件内容
  */
 function readFileToString(filePath) {
   var data = fs.readFileSync(filePath);
@@ -239,8 +235,9 @@ function readFileToString(filePath) {
 }
 
 /**
- * entityName 必须以’Entity‘结尾
- *
+ * 生成 DAO 接口和实现类
+ * @param entityName 必须以’Entity‘结尾
+ * @param entityDesc
  */
 function genJpaDaoInterfaceAndImpl(entityName, entityDesc) {
   console.log();
@@ -256,8 +253,6 @@ function genJpaDaoInterfaceAndImpl(entityName, entityDesc) {
   params.dao_name = daoName;
   params.entity_name = entityName;
   params.dao_desc = entityDesc;
-
-
 
   var templateSrc = readFileToString('template/dao_template.java');
 
@@ -289,10 +284,6 @@ function genJpaDaoInterfaceAndImpl(entityName, entityDesc) {
   }
 
   fs.writeFile(arg_target_folder + 'impl/' + daoName + 'Impl.java', javaCode);
-
-}
-
-function genJpaDaoInterface(entityName) {
 
 }
 
