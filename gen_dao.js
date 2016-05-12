@@ -168,7 +168,11 @@ function genJpaEntity(className, tbName, columns, entityDesc) {
     }
     else if(colDef.type != 'INT' && colDef.type != 'LONG' && colDef.type != 'SMALLINT') {
       content += ', length = ' + colDef.length;
+      if (colDef.type == 'CHAR') {
+        content += ', columnDefinition = "char(' + colDef.length + ')"';
+      }
     }
+
     if (colDef.unique) {
       content += ', unique = true';
     }
