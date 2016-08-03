@@ -1,4 +1,4 @@
-// Usage: node gen_java_node.js <source folder name> <target folder name>
+// Usage: node gen_dao.js exec <source folder name> <target folder name>
 // <source folder name>: Include files each for a table.
 // <target folder name>: To store generated java class files.
 // 映射文件格式：
@@ -12,43 +12,77 @@ var fs = require('fs');
 var util = require('util');
 var StringDecoder = require('string_decoder').StringDecoder;
 var ejs = require('ejs');
-
+var program = require('commander');
 var decoder = new StringDecoder('utf8');
+
+console.log('DAO generator for Java persistence ')
 
 //　换行符
 var LINE_SEP = '\n';
-
-if (process.argv.length < 4) {
-  console.log('Usage: node gen_dao.js <source folder name> <target folder name>');
-  return;
-}
-
 var arg_src_folder = process.argv[2];
 var arg_target_folder = process.argv[3];
+var is_verbose = false;
 
-console.log(arg_src_folder);
-console.log(arg_target_folder);
 
-var mappingSrc = readFileToString('template/mapping');
-var mapping = JSON.parse(mappingSrc);
-console.log(mapping);
-
-fs.readdir(arg_src_folder, function (err, files) {
-  if (err || !files || files.length == 0) {
-    console.log('No mapping files for DB');
-    return;
-  }
-  for (var i = 0; i < files.length; i++) {
-    var fileName = files[i];
-    if (fileName.indexOf('.') == 0) {
-      continue;
+program.version('1.0')
+  .option('-v, --verbose', 'show verbose log')
+  .command('exec <src> <dst>')
+  .action(function(src, dst) {
+    console.log(program.verbose);
+    if (program.verbose) {
+      console.log("verbose mode");
     }
-    var className = fileName;
-    console.log('Read definition file: ' + fileName);
-    var fileData = fs.readFileSync(arg_src_folder + '/' + fileName);
-    handleMapping(className, fileData);
-  }
-});
+    else {
+      console.log("silent mode");
+    }
+    console.log(src);
+    console.log(dst);
+    arg_src_folder = src;
+    arg_target_folder = dst;
+    is_verbose = program.verbose;
+    console.log(arg_src_folder);
+    execGeneration();
+  });
+
+program.parse(process.argv);
+
+// if (process.argv.length < 4) {
+//   console.log('Usage: node gen_dao.js <source folder name> <target folder name>');
+//   return;
+// }
+//
+// var arg_src_folder = process.argv[2];
+// var arg_target_folder = process.argv[3];
+
+var mapping;
+
+function execGeneration() {
+  console.log('Starting generator');
+  info(arg_src_folder);
+  info(arg_target_folder);
+
+  var mappingSrc = readFileToString('template/mapping');
+  mapping = JSON.parse(mappingSrc);
+  info(mapping);
+
+  fs.readdir(arg_src_folder, function (err, files) {
+    if (err || !files || files.length == 0) {
+      info('No mapping files for DB');
+      return;
+    }
+    for (var i = 0; i < files.length; i++) {
+      var fileName = files[i];
+      if (fileName.indexOf('.') == 0) {
+        continue;
+      }
+      var className = fileName;
+      info('Read definition file: ' + fileName);
+      var fileData = fs.readFileSync(arg_src_folder + '/' + fileName);
+      handleMapping(className, fileData);
+    }
+  });
+}
+
 
 /**
  * 处理一个映射文件中的元数据，生成实体类文件
@@ -57,16 +91,16 @@ fs.readdir(arg_src_folder, function (err, files) {
  */
 function handleMapping(className, data) {
   if (!data) {
-    console.log('  failed to load file');
+    info('  failed to load file');
   }
   else {
     var bytes = new Buffer(data);
     var str = decoder.write(bytes).trim();
     //console.log(str);
     var lines = str.split(LINE_SEP);
-    console.log('### ' + lines.length % 3 == 2); // 必须是 3*n+2 行
+    debug('### ' + lines.length % 3 == 2); // 必须是 3*n+2 行
     if (!lines || lines.length == 0 || lines.length % 3 != 2) {
-      console.log('  column definition invalid');
+      info('  column definition invalid');
       return;
     }
     var colDefs = []; // 字段定义
@@ -74,14 +108,14 @@ function handleMapping(className, data) {
     var entityDesc = lines[1];
     for (var j = 2; j < lines.length; j++) {
       var colDef = {};
-      console.log(colDef);
+      debug(colDef);
       colDef.name = getColName(lines[j]);
       colDef.unique = lines[j].indexOf('*') > 0;
       colDef.notnull = lines[j++].indexOf('#') > 0;
       colDef.type = getType(lines[j]);
       colDef.length = getLength(lines[j++], colDef.type);
       colDef.comment = lines[j];
-      console.log(colDef);
+      debug(colDef);
       colDefs.push(colDef);
     }
 
@@ -129,14 +163,14 @@ function getLength(str, type) {
  * @param columns 字段定义
  * @param entityDesc
  */
-function genJpaEntity(className, tbName, columns, entityDesc) {
-  console.log();
-  console.log('==== Create JPA Entity Class for Table "%s" ====', tbName);
+function genJpaEntity(entityClassName, tbName, columns, entityDesc) {
+  info();
+  info('==== Create JPA Entity Class for Table "%s" ====', tbName);
 
   var colValues = {};
   colValues = Object.assign(colValues, mapping);
   // colValues.entity_pkg_name = arg_pkg_name_entity;
-  colValues.entity_name = className;
+  colValues.entity_class_name = entityClassName;
   colValues.table_name = tbName;
   colValues.entity_desc = entityDesc;
   colValues.col_defs = [];// init
@@ -162,8 +196,10 @@ function genJpaEntity(className, tbName, columns, entityDesc) {
     content += util.format('@Column(name = COL_NAME_%s', colDef.name);
 
     if (colDef.type == 'DECIMAL') {
-      var precise = colDef.length.substring(0, colDef.length.indexOf(','));
-      var scale = colDef.length.substring(colDef.length.indexOf(',', colDef.length.indexOf(')')));
+      var iSeperator = colDef.length.indexOf(',');
+      console.log(colDef.length);
+      var precise = colDef.length.substring(0, iSeperator);
+      var scale = colDef.length.substring(iSeperator + 1, colDef.length.length);
       content += ', precision = ' + precise + ', scale = ' + scale;
     }
     else if(colDef.type != 'INT' && colDef.type != 'LONG' && colDef.type != 'SMALLINT') {
@@ -193,28 +229,31 @@ function genJpaEntity(className, tbName, columns, entityDesc) {
     else if (colDef.type == 'DECIMAL') {
       type = 'BigDecimal';
     }
+    else if(colDef.type == 'CHAR' || colDef.type == 'VARCHAR') {
+      type = 'String';
+    }
     else {
-      console.log('  WARN: Unrecognizable column type: %s, treat as String', type);
+      info('  WARN: Unrecognizable column type: %s, treat as String', colDef.type);
     }
     colValue.type = type;
     colValue.property_name = convertUnderLineToCamelSentence(colDef.name, true);
     colValue.property_method_name = convertUnderLineToCamelSentence(colDef.name, false);
 
-    console.log(colValue);
+    debug(colValue);
 
     colValues.col_defs.push(colValue);
   }
 
-  console.log('转换结果:');
-  console.log(colValues);
+  debug('转换结果:');
+  debug(colValues);
   for(var i=0; i<colValues.length; i++) {
-    console.log(colValues[i]);
+    debug(colValues[i]);
   }
 
   var javaCode;
   var templateSrc = readFileToString('template/entity_template.java');
   if (!templateSrc || templateSrc.length == 0) {
-    console.log('实体类模版没有找到');
+    info('实体类模版没有找到');
     return;
   }
 
@@ -226,7 +265,10 @@ function genJpaEntity(className, tbName, columns, entityDesc) {
     fs.mkdirSync(dstDir);
   }
 
-  fs.writeFile(dstDir + className + '.java', javaCode);
+  var dstFilePath = dstDir + entityClassName + '.java';
+  fs.writeFile(dstFilePath, javaCode);
+
+  info('==== Done with file %s created ====', dstFilePath);
 }
 
 /**
@@ -243,18 +285,20 @@ function readFileToString(filePath) {
  * @param entityName 必须以’Entity‘结尾
  * @param entityDesc
  */
-function genJpaDaoInterfaceAndImpl(entityName, entityDesc) {
-  console.log();
-  console.log('==== Create JPA Dao Interface for Entity "%s" ====', entityName);
+function genJpaDaoInterfaceAndImpl(entityClassName, entityDesc) {
+  info();
+  info('==== Create JPA Dao Interface for Entity "%s" ====', entityName);
 
 
-  var daoName = replaceTail(entityName, 'Entity', 'Dao');
+  var daoName = replaceTail(entityClassName, 'Entity', 'Dao');
+  var entityName = replaceTail(entityClassName, 'Entity', '');
 
   var params = {};
   params = Object.assign(params, mapping);
   // params.dao_pkg_name = arg_pkg_name_dao;
   // params.entity_pkg_name = arg_pkg_name_entity;
   params.dao_name = daoName;
+  params.entity_class_name = entityClassName;
   params.entity_name = entityName;
   params.dao_desc = entityDesc;
 
@@ -270,11 +314,14 @@ function genJpaDaoInterfaceAndImpl(entityName, entityDesc) {
     fs.mkdirSync(dstDir);
   }
 
-  fs.writeFile(arg_target_folder + daoName + '.java', javaCode);
+  var dstDaoFilePath = arg_target_folder + daoName + '.java';
+  fs.writeFile(dstDaoFilePath, javaCode);
+
+  info('==== Done with file %s created ====', dstDaoFilePath);
 
   // 生成 DAO 实现类
-  console.log();
-  console.log('==== Create JPA Dao Interface for Entity "%s" ====', entityName);
+  info();
+  info('==== Create JPA Dao Interface for Entity "%s" ====', entityName);
   // var daoImplName = replaceTail(entityName, 'Entity', 'DaoImpl');
 
   var templateSrc = readFileToString('template/dao_impl_template.java');
@@ -287,7 +334,10 @@ function genJpaDaoInterfaceAndImpl(entityName, entityDesc) {
     fs.mkdirSync(dstDir);
   }
 
-  fs.writeFile(arg_target_folder + 'impl/' + daoName + 'Impl.java', javaCode);
+  var dstDaoImplFilePath = arg_target_folder + 'impl/' + daoName + 'Impl.java';
+  fs.writeFile(dstDaoImplFilePath, javaCode);
+
+  info('==== Done with file %s created ====', dstDaoImplFilePath);
 
 }
 
@@ -298,11 +348,11 @@ function genJpaDaoInterfaceAndImpl(entityName, entityDesc) {
 function replaceTail(str, old, replacement) {
   var n = str.lastIndexOf(old);
   if (n <=0 ) {
-    console.log('No specified tail found');
+    debug('No specified tail found');
     return str;
   }
-  console.log(n);
-  console.log(str.substring(0, n) );
+  debug(n);
+  debug(str.substring(0, n) );
   return str.substring(0, n) + replacement;
 }
 
@@ -328,4 +378,22 @@ function convertUnderLineToCamelSentence(sentence, firstLowerCase) {
     ret += words[i].substring(1).toLowerCase(); // 后面全部小写
   }
   return ret;
+}
+
+function debug(str) {
+  if (is_verbose && str) {
+    console.log(str);
+  }
+}
+
+function info(str) {
+  if (str) {
+    console.log(str);
+  }
+}
+
+function info(str, value) {
+  if (str) {
+    console.log(str, value);
+  }
 }

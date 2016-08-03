@@ -1,5 +1,5 @@
 # DaoGen
-DAO generator for Java persistence 
+DAO generator for Java persistence
 
 基于Node.js实现的Java持久层代码生成器，操作简单依赖少，可自定义模版生成任意DAO框架的Java代码（默认模版支持Hibernate）
 
@@ -24,6 +24,10 @@ DAO generator for Java persistence
 6. 重复步骤5定义其他表
 7. 运行程序生成代码：
 ```
-  nodejs gen_dao.js src/ dst/
+  node gen_dao.js exec src/ dst/
+```
+  如果需要显示详细的过程：
+```
+  node gen_dao.js exec -v src/ dst/
 ```
   其中 src/ 是前面放置表定义的地方，dst/是最终生成代码的文件夹

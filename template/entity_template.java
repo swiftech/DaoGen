@@ -9,7 +9,7 @@ import javax.persistence.Table;
  */
 @Entity
 @Table(name = "<%-table_name-%>")
-public class <%-entity_name-%> extends <%-base_entity-%> {
+public class <%-entity_class_name-%> extends <%-base_entity-%> {
 
 	public static final String TABLE_NAME_<%-table_name-%> = "<%-table_name-%>";
 
